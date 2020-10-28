@@ -7,16 +7,15 @@ let decryptor;
 
 let result = {}
 
-module.exports = async (otherPeer) => {
+module.exports = async (client) => {
     await nacl.ready;
     
-    let keys = nacl.crypto_box_keypair();
+    let keys = nacl.crypto_kx_keypair();
 
-    if(otherPeer){  
+    if(client){  
         let server = nacl.crypto_kx_keypair();
-        let client = otherPeer.setServer(server.publicKey);
-        clientSessionKeys = client.sharedKeys;
-        serverSessionKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
+        let clientSessionKeys = client.getClientSession(server.publicKey);
+        let serverSessionKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
   
         encryptor = await Encryptor(clientSessionKeys.sharedTx);
         decryptor = await Decryptor(serverSessionKeys.sharedRx);
@@ -44,12 +43,8 @@ module.exports = async (otherPeer) => {
             return msg;
         },
 
-        setServer : (server) => {
-            let client = nacl.crypto_kx_keypair();
-            return {
-                publicKey : client.publicKey,
-                sharedKeys : nacl.crypto_kx_client_session_keys(client.publicKey, client.privateKey, server)
-            }
+        getClientSession : (server) => {
+            return nacl.crypto_kx_client_session_keys(keys.publicKey, keys.privateKey, server);
         }
     });
 }
