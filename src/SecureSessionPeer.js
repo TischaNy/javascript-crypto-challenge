@@ -13,9 +13,8 @@ module.exports = async (client) => {
     let keys = nacl.crypto_kx_keypair();
 
     if(client){  
-        let server = nacl.crypto_kx_keypair();
-        let clientSessionKeys = client.getClientSession(server.publicKey);
-        let serverSessionKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
+        let clientSessionKeys = client.getClientSession(keys.publicKey);
+        let serverSessionKeys = nacl.crypto_kx_server_session_keys(keys.publicKey, keys.privateKey, client.publicKey);
   
         encryptor = await Encryptor(clientSessionKeys.sharedTx);
         decryptor = await Decryptor(serverSessionKeys.sharedRx);
