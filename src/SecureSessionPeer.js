@@ -1,51 +1,54 @@
 const nacl = require('libsodium-wrappers')
+const Decryptor = require('./Decryptor.js');
+const Encryptor = require('./Encryptor.js');
 
-let keys;
+let encryptor;
+let decryptor;
 let server = {}
 let client = {}
 let result = {}
 
 module.exports = async (otherPeer) => {
     await nacl.ready;
-    keys = nacl.crypto_box_keypair();
+ 
+    let serverSessionKeys;
+    let clientSessionKeys;
+    let keys = nacl.crypto_box_keypair();
 
     if(otherPeer){
         server = nacl.crypto_kx_keypair();
-    }else{
         client = nacl.crypto_kx_keypair();
+        clientSessionKeys = nacl.crypto_kx_client_session_keys(client.publicKey, client.privateKey, server.publicKey);
+        serverSessionKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
+        encryptor = await Encryptor(clientSessionKeys.sharedTx);
+        decryptor = await Decryptor(serverSessionKeys.sharedRx);
     }
+
+    if(encryptor === undefined && decryptor == undefined){
+        encryptor = await Encryptor(keys.publicKey);
+        decryptor = await Decryptor(keys.privateKey);
+    }   
 
     return Object.freeze({
         publicKey : keys.publicKey,
         encrypt : (msg) => {
-            let sharedKeys = nacl.crypto_kx_client_session_keys(client.publicKey, client.privateKey, server.publicKey);
-            let nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES);
-            return {
-                ciphertext: nacl.crypto_secretbox_easy(msg, nonce, sharedKeys.sharedTx),
-                nonce : nonce
-            }
+            return encryptor.encrypt(msg);
         },
 
         decrypt : (ciphertext, nonce) => {
-            let sharedKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
-            return nacl.crypto_secretbox_open_easy(ciphertext, nonce, sharedKeys.sharedRx);
+            return decryptor.decrypt(ciphertext, nonce);
         },
 
         send : (msg) => {
-            let sharedKeys = nacl.crypto_kx_client_session_keys(client.publicKey, client.privateKey, server.publicKey);
-            let nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES)
-            result = {
-                nonce : nonce,
-                ciphertext : nacl.crypto_secretbox_easy(msg, nonce, sharedKeys.sharedTx),
-            }
+            result = encryptor.encrypt(msg);
         },
 
         receive : () => {
+            let msg;
             if(result){
-                let sharedKeys = nacl.crypto_kx_server_session_keys(server.publicKey, server.privateKey, client.publicKey);
-                msg = nacl.crypto_secretbox_open_easy(result.ciphertext, result.nonce, sharedKeys.sharedRx);
+                msg = decryptor.decrypt(result.ciphertext, result.nonce);
+                result = {};
             }
-            result = {};
             return msg;
         }
     });
