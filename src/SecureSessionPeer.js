@@ -2,14 +2,14 @@ const nacl = require('libsodium-wrappers')
 const Decryptor = require('./Decryptor.js');
 const Encryptor = require('./Encryptor.js');
 
-let encryptor;
-let decryptor;
-
 let result = {}
 
 module.exports = async (client) => {
     await nacl.ready;
     
+    let encryptor;
+    let decryptor;
+
     let keys = nacl.crypto_kx_keypair();
 
     if(client){  
@@ -18,6 +18,8 @@ module.exports = async (client) => {
   
         encryptor = await Encryptor(clientSessionKeys.sharedTx);
         decryptor = await Decryptor(serverSessionKeys.sharedRx);
+        client.setEncryptor(encryptor);
+        client.setDecryptor(decryptor);
     }
     return Object.freeze({
         publicKey : keys.publicKey,
@@ -42,8 +44,16 @@ module.exports = async (client) => {
             return msg;
         },
 
-        getClientSession : (server) => {
-            return nacl.crypto_kx_client_session_keys(keys.publicKey, keys.privateKey, server);
+        getClientSession : (serverPublicKey) => {
+            return nacl.crypto_kx_client_session_keys(keys.publicKey, keys.privateKey, serverPublicKey);
+        },
+
+        setEncryptor : (_encryptor) => {
+            encryptor = _encryptor;
+        },
+
+        setDecryptor : (_decryptor) => {
+            decryptor = _decryptor;
         }
     });
 }
