@@ -16,10 +16,10 @@ module.exports = async (client) => {
         let clientSessionKeys = client.getClientSession(keys.publicKey);
         let serverSessionKeys = nacl.crypto_kx_server_session_keys(keys.publicKey, keys.privateKey, client.publicKey);
   
-        encryptor = await Encryptor(clientSessionKeys.sharedTx);
+        encryptor = await Encryptor(serverSessionKeys.sharedTx);
         decryptor = await Decryptor(serverSessionKeys.sharedRx);
-        client.setEncryptor(encryptor);
-        client.setDecryptor(decryptor);
+        client.setEncryptor(await Encryptor(clientSessionKeys.sharedTx));
+        client.setDecryptor(await Decryptor(clientSessionKeys.sharedRx));
     }
     return Object.freeze({
         publicKey : keys.publicKey,
