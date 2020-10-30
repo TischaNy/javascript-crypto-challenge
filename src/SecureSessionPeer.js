@@ -47,6 +47,6 @@ module.exports = async (client) => {
             let clientSessionKeys =  nacl.crypto_kx_client_session_keys(keys.publicKey, keys.privateKey, serverPublicKey);
             encryptor = await Encryptor(clientSessionKeys.sharedTx);
             decryptor = await Decryptor(clientSessionKeys.sharedRx);
-        },
+        }
     });
 }
